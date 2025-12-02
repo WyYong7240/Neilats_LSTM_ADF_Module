@@ -1,0 +1,1 @@
+NODES = ["master","node1","node2"]

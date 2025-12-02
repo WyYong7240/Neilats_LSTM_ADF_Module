@@ -1,0 +1,11 @@
+Flask==3.1.2
+flask_cors==6.0.1
+joblib==1.5.2
+matplotlib==3.9.4
+numpy==2.0.2
+pandas==2.3.3
+scikit_learn==1.6.1
+statsmodels==0.14.5
+torch==2.4.1    # 容器使用的torch依赖，CPU版本
+# torch==2.7.1+cu118 是在模型开发环境中使用的torch依赖
+--extra-index-url https://download.pytorch.org/whl/cpu
