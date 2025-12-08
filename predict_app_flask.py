@@ -34,73 +34,38 @@ def get_input_tensor(scaler_name):
 
     return input_tensor, sla_time
 
-@app.route('/predict/master2node1', methods=['POST'])
-def predict_master2node1():
+@app.route("/predict/<path:pattern>", methods=["POST"])
+def predict_master2node1(pattern):
+    model_scaler_name = ""
+    if pattern in ["master2node1", "node12master"]:
+        model_scaler_name = "master2node1"
+    elif pattern in ["master2node2", "node22master"]:
+        model_scaler_name = "master2node2"
+    elif pattern in ["master2node3", "node32master"]:
+        model_scaler_name = "master2node3"
+    elif pattern in ["node12node2", "node22node1"]:
+        model_scaler_name = "node12node2"
+    elif pattern in ["node12node3", "node32node1"]:
+        model_scaler_name = "node12node3"
+    elif pattern in ["node22node3", "node32node2"]:
+        model_scaler_name = "node22node3"
     try:
         # 获取数据
-        input_tensor, sla_time = get_input_tensor("master2node1")
+        input_tensor, sla_time = get_input_tensor(model_scaler_name)
         # 推理
         with torch.no_grad():
-            pred_scaled = MODELS["master2node1"](input_tensor)
+            pred_scaled = MODELS[model_scaler_name](input_tensor)
             pred_scaled = pred_scaled.cpu().numpy()
         # 反归一化
-        pred_inv = SCALERS["master2node1"].inverse_transform(pred_scaled.reshape(-1, 1))
+        pred_inv = SCALERS[model_scaler_name].inverse_transform(pred_scaled.reshape(-1, 1))
 
         # 计算未来通信链路得分
-        print("master2node1 predict latency:")
+        print(model_scaler_name + " predict latency:")
         print(pred_inv.tolist())
         future_score = def_future_score(pred_inv.tolist(), sla_time)
-        print("master2node1 future_score:")
+        print(model_scaler_name + " future_score:")
         print(future_score)
-        return jsonify({"future_score": future_score})
-
-        # return jsonify({"prediction": pred_inv.tolist()})
-    except Exception as e:
-        return jsonify({"error":str(e)}), 500
-
-@app.route('/predict/master2node2', methods=['POST'])
-def predict_master2node2():
-    try:
-        # 获取数据
-        input_tensor, sla_time = get_input_tensor("master2node2")
-        # 推理
-        with torch.no_grad():
-            pred_scaled = MODELS["master2node2"](input_tensor)
-            pred_scaled = pred_scaled.cpu().numpy()
-        # 反归一化
-        pred_inv = SCALERS["master2node2"].inverse_transform(pred_scaled.reshape(-1, 1))
-
-        # 计算未来通信链路得分
-        print("master2node2 predict latency:")
-        print(pred_inv.tolist())
-        future_score = def_future_score(pred_inv.tolist(), sla_time)
-        print("master2node2 future_score:")
-        print(future_score)
-        return jsonify({"future_score": future_score})
-
-        # return jsonify({"prediction": pred_inv.tolist()})
-    except Exception as e:
-        return jsonify({"error":str(e)}), 500
-
-@app.route('/predict/node12node2', methods=['POST'])
-def predict_node22node1():
-    try:
-        # 获取数据
-        input_tensor, sla_time = get_input_tensor("node12node2")
-        # 推理
-        with torch.no_grad():
-            pred_scaled = MODELS["node12node2"](input_tensor)
-            pred_scaled = pred_scaled.cpu().numpy()
-        # 反归一化
-        pred_inv = SCALERS["node12node2"].inverse_transform(pred_scaled.reshape(-1, 1))
-
-        # 计算未来通信链路得分
-        print("node12node2 predict latency:")
-        print(pred_inv.tolist())
-        future_score = def_future_score(pred_inv.tolist(), sla_time)
-        print("node12node2 future_score:")
-        print(future_score)
-        return jsonify({"future_score": future_score})
+        return jsonify({"score": future_score})
 
         # return jsonify({"prediction": pred_inv.tolist()})
     except Exception as e:
@@ -115,7 +80,7 @@ def adf_score_compute():
     adf_score = adf(data["latency"])
     print("adf_score:")
     print(adf_score)
-    return jsonify({"adf_score": adf_score})
+    return jsonify({"score": adf_score})
 
 
 @app.route('/health', methods=['GET'])
