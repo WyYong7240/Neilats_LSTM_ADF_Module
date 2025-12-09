@@ -5,7 +5,7 @@ tags:
   - ADF
   - Flask
 ---
-# Neilats_LSTM_ADF_Module
+# 项目简介
 
 该项目的作用是为Neilats自定义调度插件提供另外的两个功能模块
 
@@ -134,3 +134,88 @@ tags:
   2. predict_app_flask.py
 
      得分计算服务代理模块，使用flask实现
+
+
+
+# Version2.0更新
+
+## 1.增加了针对node3的model和scaler
+
+详见目录`model`
+
+增加了
+
+1. lstm_master2node3.pth
+2. lstm_node12node3.pth
+3. lstm_node22node3.pth
+4. scaler_master2node3.pkl
+5. scaler_node12node3.pkl
+6. scaler_node22node3.pkl
+
+## 2.修改predict_flask_app.py中FutureScore、ADFScore返回体字段
+
+1. FutureScore访问端口返回体
+
+   ~~~python
+           # 计算未来通信链路得分
+           print(model_scaler_name + " predict latency:")
+           print(pred_inv.tolist())
+           future_score = def_future_score(pred_inv.tolist(), sla_time)
+           print(model_scaler_name + " future_score:")
+           print(future_score)
+           return jsonify({"score": future_score})
+   ~~~
+
+2. ADFScore访问端口返回体
+
+   ~~~python
+       print(data["latency"])
+       adf_score = adf(data["latency"])
+       print("adf_score:")
+       print(adf_score)
+       return jsonify({"score": adf_score})
+   ~~~
+
+## 3.修改FutureScore各个节点之间的访问端口，统一为一个模式
+
+~~~python
+@app.route("/predict/<path:pattern>", methods=["POST"])
+def predict_master2node1(pattern):
+    model_scaler_name = ""
+    if pattern in ["master2node1", "node12master"]:
+        model_scaler_name = "master2node1"
+    elif pattern in ["master2node2", "node22master"]:
+        model_scaler_name = "master2node2"
+    elif pattern in ["master2node3", "node32master"]:
+        model_scaler_name = "master2node3"
+    elif pattern in ["node12node2", "node22node1"]:
+        model_scaler_name = "node12node2"
+    elif pattern in ["node12node3", "node32node1"]:
+        model_scaler_name = "node12node3"
+    elif pattern in ["node22node3", "node32node2"]:
+        model_scaler_name = "node22node3"
+    try:
+        # 获取数据
+        input_tensor, sla_time = get_input_tensor(model_scaler_name)
+        # 推理
+        with torch.no_grad():
+            pred_scaled = MODELS[model_scaler_name](input_tensor)
+            pred_scaled = pred_scaled.cpu().numpy()
+        # 反归一化
+        pred_inv = SCALERS[model_scaler_name].inverse_transform(pred_scaled.reshape(-1, 1))
+
+        # 计算未来通信链路得分
+        print(model_scaler_name + " predict latency:")
+        print(pred_inv.tolist())
+        future_score = def_future_score(pred_inv.tolist(), sla_time)
+        print(model_scaler_name + " future_score:")
+        print(future_score)
+        return jsonify({"score": future_score})
+
+        # return jsonify({"prediction": pred_inv.tolist()})
+    except Exception as e:
+        return jsonify({"error":str(e)}), 500
+~~~
+
+
+
